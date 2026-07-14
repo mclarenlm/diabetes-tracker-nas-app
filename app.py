@@ -490,6 +490,22 @@ def delete_meal_template(item_id):
     return jsonify({'ok': True})
 
 
+@app.route('/api/meal-templates/<int:item_id>', methods=['PUT'])
+def update_meal_template(item_id):
+    data = request.json
+    name = (data.get('name') or '').strip()
+    meal = (data.get('meal') or '').strip()
+    food = (data.get('food') or '').strip()
+    if not name or not food:
+        return jsonify({'ok': False, 'error': 'name 和 food 不能为空'}), 400
+    _, conn, _ = _db_op(
+        '''UPDATE meal_templates SET name=?, meal=?, food=?, calories=?, eating_order=?
+           WHERE id=?''',
+        (name, meal, food, data.get('calories', ''), data.get('eating_order', ''), item_id))
+    conn.close()
+    return jsonify({'ok': True})
+
+
 # ========== 数据备份与恢复 ==========
 @app.route('/api/backup', methods=['GET'])
 def backup_data():

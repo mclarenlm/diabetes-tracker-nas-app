@@ -451,12 +451,59 @@
 
     <!-- 饮食模板 -->
     <div class="card" id="mealTemplateCard">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
             <h2 style="margin-bottom:0;"><span class="icon">🍱</span> 饮食模板</h2>
-            <button type="button" class="btn btn-sm" onclick="saveCurrentAsTemplate()" style="background:var(--primary); color:white;">💾 存为模板</button>
+            <div style="display:flex; gap:8px;">
+                <button type="button" class="btn btn-sm" onclick="newTemplate()" style="background:var(--primary); color:white;">➕ 新建模板</button>
+                <button type="button" class="btn btn-sm" onclick="saveCurrentAsTemplate()" style="background:var(--primary-light); color:var(--primary); border:1px solid var(--primary);">💾 存为模板</button>
+            </div>
         </div>
-        <p style="font-size:0.8rem; color:var(--text-light); margin-bottom:10px;">点击模板一键填充到表单，免去重复输入常用餐食</p>
+        <p style="font-size:0.8rem; color:var(--text-light); margin-bottom:10px;">点「应用」一键填充到表单；「新建模板」可直接添加常用餐食，免去重复输入</p>
         <div id="templateList" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:10px;"></div>
+    </div>
+
+    <!-- 模板编辑弹窗 -->
+    <div id="templateModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; padding:16px;">
+        <div style="background:var(--card); border-radius:14px; width:100%; max-width:440px; max-height:90vh; overflow:auto; padding:20px; box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+            <h3 style="margin:0 0 14px;" id="templateModalTitle">新建饮食模板</h3>
+            <input type="hidden" id="tplId">
+            <div class="form-group">
+                <label>模板名称</label>
+                <input type="text" id="tplName" placeholder="如 营养早餐 / 午餐便当">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>餐次</label>
+                    <select id="tplMeal">
+                        <option value="早餐">早餐</option>
+                        <option value="午餐">午餐</option>
+                        <option value="晚餐">晚餐</option>
+                        <option value="加餐">加餐</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>热量 (kcal)</label>
+                    <input type="number" id="tplCalories" min="0" placeholder="如 450">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>食物内容</label>
+                <textarea id="tplFood" rows="3" placeholder="如 糙米饭100g + 清蒸鲈鱼150g + 西兰花200g"></textarea>
+            </div>
+            <div class="form-group">
+                <label>进食顺序</label>
+                <select id="tplOrder">
+                    <option value="">未注意</option>
+                    <option value="蔬菜→蛋白质→主食">蔬菜→蛋白质→主食（推荐）</option>
+                    <option value="主食→蛋白质→蔬菜">主食→蛋白质→蔬菜</option>
+                    <option value="混合进食">混合进食</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:16px;">
+                <button class="btn btn-primary" style="flex:1;" onclick="submitTemplate()">保存</button>
+                <button class="btn btn-sm" style="flex:1; background:var(--border); color:var(--text);" onclick="closeTemplateModal()">取消</button>
+            </div>
+        </div>
     </div>
 
     <div class="dual-layout">
@@ -1374,6 +1421,12 @@ async function updateTodayOverview() {
 }
 
 // ===== 饮食模板 =====
+function escapeHtml(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 async function loadMealTemplates() {
     try { mealTemplates = await apiGet(API.mealTemplates); } catch { mealTemplates = []; }
     renderMealTemplates();
@@ -1382,15 +1435,19 @@ async function loadMealTemplates() {
 function renderMealTemplates() {
     const container = document.getElementById('templateList');
     if (mealTemplates.length === 0) {
-        container.innerHTML = '<div style="color:var(--text-light); font-size:0.85rem; padding:8px;">暂无模板，填写表单后点击"存为模板"创建</div>';
+        container.innerHTML = '<div style="color:var(--text-light); font-size:0.85rem; padding:8px;">暂无模板，点右上角「➕ 新建模板」添加常用餐食</div>';
         return;
     }
     container.innerHTML = mealTemplates.map(t => `
-        <div style="position:relative; background:var(--primary-light); border-radius:8px; padding:10px 12px; cursor:pointer; border:1px solid var(--border);" onclick="applyTemplate(${t.id})">
-            <div style="font-weight:600; font-size:0.85rem; margin-bottom:4px;">🍱 ${t.name}</div>
-            <div style="font-size:0.78rem; color:var(--text-light);">${t.meal} · ${t.food}</div>
-            ${t.calories ? `<div style="font-size:0.72rem; color:var(--text-light);">${t.calories} kcal</div>` : ''}
-            <button onclick="event.stopPropagation(); deleteTemplate(${t.id})" style="position:absolute; top:6px; right:6px; background:var(--danger); color:white; border:none; border-radius:50%; width:20px; height:20px; cursor:pointer; font-size:0.7rem; line-height:1;">×</button>
+        <div style="background:var(--primary-light); border-radius:10px; padding:10px 12px; border:1px solid var(--border);">
+            <div style="font-weight:600; font-size:0.85rem; margin-bottom:2px; cursor:pointer;" onclick="applyTemplate(${t.id})">🍱 ${escapeHtml(t.name)}</div>
+            <div style="font-size:0.78rem; color:var(--text-light); cursor:pointer;" onclick="applyTemplate(${t.id})">${escapeHtml(t.meal)} · ${escapeHtml(t.food)}</div>
+            ${t.calories ? `<div style="font-size:0.72rem; color:var(--text-light);">${escapeHtml(t.calories)} kcal</div>` : ''}
+            <div style="display:flex; gap:6px; margin-top:8px;">
+                <button class="btn btn-sm" onclick="applyTemplate(${t.id})" style="background:var(--primary); color:white; flex:1;">应用</button>
+                <button class="btn btn-sm" onclick="editTemplate(${t.id})" style="flex:1;">编辑</button>
+                <button class="btn btn-sm" onclick="deleteTemplate(${t.id})" style="background:var(--danger); color:white;">删</button>
+            </div>
         </div>
     `).join('');
 }
@@ -1402,26 +1459,87 @@ function applyTemplate(id) {
     document.getElementById('dietFood').value = t.food || '';
     document.getElementById('dietCalories').value = t.calories || '';
     if (t.eating_order) document.getElementById('dietOrder').value = t.eating_order;
+    // 清空每次专属字段，避免误提交上一次的血糖/备注
+    document.getElementById('dietGlucose').value = '';
+    document.getElementById('dietNote').value = '';
     showToast('✅ 已填充模板：' + t.name);
 }
 
-window.saveCurrentAsTemplate = async function() {
+function openTemplateModal(prefill) {
+    const editing = prefill && prefill.id;
+    document.getElementById('templateModalTitle').textContent = editing ? '编辑模板' : '新建饮食模板';
+    document.getElementById('tplId').value = editing ? prefill.id : '';
+    document.getElementById('tplName').value = prefill?.name || '';
+    document.getElementById('tplMeal').value = prefill?.meal || document.getElementById('dietMeal').value || '早餐';
+    document.getElementById('tplFood').value = prefill?.food || '';
+    document.getElementById('tplCalories').value = prefill?.calories || '';
+    document.getElementById('tplOrder').value = prefill?.eating_order || document.getElementById('dietOrder').value || '';
+    document.getElementById('templateModal').style.display = 'flex';
+    setTimeout(() => document.getElementById('tplName').focus(), 50);
+}
+
+function closeTemplateModal() {
+    document.getElementById('templateModal').style.display = 'none';
+}
+
+(function () {
+    const m = document.getElementById('templateModal');
+    if (m) m.addEventListener('click', e => { if (e.target.id === 'templateModal') closeTemplateModal(); });
+})();
+
+window.newTemplate = function() { openTemplateModal(null); };
+
+window.saveCurrentAsTemplate = function() {
     const food = document.getElementById('dietFood').value.trim();
-    const meal = document.getElementById('dietMeal').value;
-    const calories = document.getElementById('dietCalories').value;
-    const order = document.getElementById('dietOrder').value;
-    if (!food) { alert('请先填写食物内容'); return; }
-    const name = prompt('给这个模板取个名字：', meal + '-' + food.slice(0, 10));
-    if (!name) return;
-    await apiPost(API.mealTemplates, { name, meal, food, calories, eating_order: order });
+    if (!food) { openTemplateModal(null); showToast('💡 在弹窗里填写食物内容即可创建模板'); return; }
+    openTemplateModal({
+        name: document.getElementById('dietMeal').value + '-' + food.slice(0, 10),
+        meal: document.getElementById('dietMeal').value,
+        food: food,
+        calories: document.getElementById('dietCalories').value,
+        eating_order: document.getElementById('dietOrder').value,
+    });
+};
+
+window.submitTemplate = async function() {
+    const id = document.getElementById('tplId').value;
+    const name = document.getElementById('tplName').value.trim();
+    const food = document.getElementById('tplFood').value.trim();
+    if (!name) { alert('请填写模板名称'); return; }
+    if (!food) { alert('请填写食物内容'); return; }
+    const payload = {
+        name,
+        meal: document.getElementById('tplMeal').value,
+        food,
+        calories: document.getElementById('tplCalories').value,
+        eating_order: document.getElementById('tplOrder').value,
+    };
+    try {
+        if (id) {
+            await apiPut(API.mealTemplates + '/' + id, payload);
+            showToast('✅ 模板已更新');
+        } else {
+            await apiPost(API.mealTemplates, payload);
+            showToast('✅ 模板已保存');
+        }
+    } catch (e) {
+        showToast('⚠️ 保存失败，请重试');
+        return;
+    }
+    closeTemplateModal();
     await loadMealTemplates();
-    showToast('✅ 模板已保存：' + name);
+};
+
+window.editTemplate = function(id) {
+    const t = mealTemplates.find(r => r.id === id);
+    if (t) openTemplateModal(t);
 };
 
 window.deleteTemplate = async function(id) {
     if (!confirm('确定删除这个模板吗？')) return;
     await apiDelete(API.mealTemplates + '/' + id);
     await loadMealTemplates();
+    showToast('🗑️ 模板已删除');
 };
 
 // ===== DIET =====
