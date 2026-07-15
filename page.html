@@ -84,6 +84,9 @@
         .header { background: var(--header-bg); padding: 18px 0; color: white; position: sticky; top: 0; z-index: 100; }
         .header-inner { max-width: 1400px; margin: 0 auto; padding: 0 20px; display: flex; align-items: center; gap: 12px; }
         .header h1 { font-size: 1.1rem; font-weight: 600; }
+        .header-left { display:flex; align-items:center; gap:10px; flex: 0 0 auto; }
+        .header-center { flex: 1 1 auto; display:flex; justify-content:center; min-width: 0; }
+        .header-right { display:flex; align-items:center; gap:8px; flex: 0 0 auto; }
         .date-display { font-size: 0.85rem; opacity: 0.9; white-space: nowrap; }
         .theme-toggle { background: rgba(255,255,255,0.15); border: none; border-radius: 8px; padding: 6px 10px; font-size: 1.2rem; cursor: pointer; color: white; }
         .tabs { display: flex; gap: 4px; background: var(--card-bg); border-radius: var(--radius); padding: 4px; margin: 12px 0; box-shadow: var(--shadow); overflow-x: auto; }
@@ -198,9 +201,12 @@
             .tab-btn { padding: 10px 6px; font-size: 0.72rem; min-width: 56px; flex-shrink: 0; }
             .tab-btn .icon-text { display: none; }
             .tab-btn .emoji { font-size: 1.2rem; }
-            .header { padding: 14px 0; }
-            .header h1 { font-size: 1rem; flex: 1 1 100%; }
+            .header { padding: 12px 0; }
+            .header h1 { font-size: 0.95rem; }
             .header-inner { padding: 0 12px; gap: 8px; flex-wrap: wrap; }
+            .header-center { order: 3; flex: 1 0 100%; justify-content: flex-start; }
+            .date-display { font-size: 0.78rem; }
+            #memberSwitch { max-width: 100px !important; font-size: 0.75rem !important; }
             .quick-med-btn { padding: 10px 8px; font-size: 0.78rem; }
             .quick-med-btn small { font-size: 0.68rem; }
             #customForm .form-row { grid-template-columns: 1fr 1fr; }
@@ -263,12 +269,16 @@
 <!-- ===== HEADER ===== -->
 <header class="header">
     <div class="header-inner">
-        <h1>🍃 糖尿病个性化治疗与控糖方案</h1>
-        <div style="display:flex; align-items:center; gap:8px;">
-            <select id="memberSwitch" style="padding:6px 8px; border:1px solid var(--border); border-radius:8px; font-size:0.8rem; background:var(--card); color:var(--text); cursor:pointer; max-width:120px;" onchange="switchMember(this.value)">
+        <div class="header-left">
+            <h1>🍃 糖尿病个性化治疗与控糖方案</h1>
+            <select id="memberSwitch" style="padding:6px 8px; border:1px solid rgba(255,255,255,0.3); border-radius:8px; font-size:0.8rem; background:rgba(255,255,255,0.15); color:white; cursor:pointer; max-width:120px;" onchange="switchMember(this.value)">
                 <option value="1">👤 本人</option>
             </select>
+        </div>
+        <div class="header-center">
             <div class="date-display" id="currentDate"></div>
+        </div>
+        <div class="header-right">
             <button class="theme-toggle" onclick="toggleTheme()" title="切换夜间/白天模式">🌙</button>
             <button id="logoutBtn" class="theme-toggle" style="display:none;" onclick="apiLogout()" title="退出登录">🔓</button>
         </div>
